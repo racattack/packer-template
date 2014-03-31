@@ -1,4 +1,4 @@
-packer-templates
+packer-template
 ================
 
 RacAttack packer templates
