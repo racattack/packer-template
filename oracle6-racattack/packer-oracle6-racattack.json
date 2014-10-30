@@ -63,6 +63,7 @@
     "inline": [
       "yum clean all",
       "yum update -y --security",
+	  "yum update -y gmp",
       "yum -y install oracle*preinstall",
       "rpm -ivh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm",
       "yum install -y puppet hiera ansible screen mc htop iotop tmux bind-utils sshpass nmap nc iftop collectl rlwrap",
