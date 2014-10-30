@@ -2,13 +2,10 @@
     "variables": {
         "ssh_name": "root",
         "ssh_pass": "root",
-        "hostname": "oracle65-racattack",
-	"outputfile": "oracle65-racattack.box",
-        "rootfs"  : "btrfs",
-        "swapsize": "6000",
+        "hostname": "oracle6-racattack",
+	"outputfile": "oracle6-racattack.box",
+        "swapsize": "8000",
 	"harddisk2_size": "52000",
-        "yumurl"     : "",
-	"repofile"   : "",
 	"compression" : 6
     },
 
@@ -25,8 +22,7 @@
 
         "vboxmanage": [
            ["modifyvm", "{{.Name}}", "--vram", "32"],
-           ["modifyvm", "{{.Name}}", "--memory", "4096"] ,
-	   ["storageattach", "{{.Name}}", "--storagectl", "IDE Controller", "--port", 0, "--device", 0, "--type", "dvddrive", "--medium", "../packer-vagrant/packer/x86_64-boot-uek.iso"],
+           ["modifyvm", "{{.Name}}", "--memory", "8000"] ,
            ["createhd", "--filename", "output-{{user `hostname`}}/{{user `hostname`}}-disk2.vdi", "--size", "{{user `harddisk2_size`}}", "--format", "VDI", "--variant", "Standard"],
            ["storageattach", "{{.Name}}", "--storagectl", "SATA Controller", "--port", "1", "--device", "0", "--type", "hdd", "--medium", "output-{{user `hostname`}}/{{user `hostname`}}-disk2.vdi"]
 	],
@@ -36,13 +32,13 @@
 
 	"headless" : 0,
 
-        "iso_url": "../packer-vagrant/packer/OracleLinux-R6-U5-Server-x86_64-dvd.iso",
-        "iso_checksum": "774fb999e4ed43341dcdf5ebc0d48f42",
+        "iso_url": "OracleLinux-R6-U4-Server-x86_64-dvd.iso",
+        "iso_checksum": "744fc1663519b4d54da1345669fcee52",
         "iso_checksum_type": "md5",
 
-        "http_directory" : "oracle65_http",
-        "http_port_min" : 8080,
-        "http_port_max" : 8082,
+        "http_directory" : "oracle6_http",
+        "http_port_min" : 18080,
+        "http_port_max" : 18099,
 
         "ssh_username": "{{user `ssh_name`}}",
         "ssh_password": "{{user `ssh_pass`}}",
@@ -57,24 +53,28 @@
             " text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg ",
             "HOSTNAME={{user `hostname`}} ",
             "SWAPSIZE={{user `swapsize`}} ",
-            "ROOTFS={{user `rootfs`}} ",
-            "YUM={{user `yumurl`}} ",
-            "REPOFILE={{user `repofile`}} ",
             "<enter>"
         ]
-
     }],
 
   "provisioners"             : [{
     "type": "shell",
     "execute_command": "sh '{{ .Path }}'",
     "inline": [
+      "yum clean all",
+      "yum update -y --security",
+      "yum -y install oracle*preinstall",
+      "rpm -ivh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm",
+      "yum install -y puppet hiera ansible screen mc htop iotop tmux bind-utils sshpass nmap nc iftop collectl rlwrap",
+      "yum clean all",
+      "rm -fr /var/cache/yum/ || true",
       "mkdir -p /media/dvd",
       "mount -o loop VBoxGuestAdditions*.iso /media/dvd",
       "sh /media/dvd/VBoxLinuxAdditions.run --nox11",
       "umount /media/dvd",
       "rm VBoxGuestAdditions*.iso",
-      "useradd vagrant",
+      "groupadd -g 1000 vagrant",
+      "useradd -u 1000 -g 1000 vagrant",
       "cp /etc/sudoers /etc/sudoers.orig",
       "sed -i -e 's/Defaults\\s*requiretty$/#Defaults\trequiretty/' /etc/sudoers",
       "sed -i -e '/# %wheel\tALL=(ALL)\tNOPASSWD: ALL/a %vagrant\tALL=(ALL)\tNOPASSWD: ALL' /etc/sudoers",
@@ -87,17 +87,11 @@
       "sed -i -e '/#UseDNS yes/a UseDNS no' /etc/ssh/sshd_config",
       "for nic in /etc/sysconfig/network-scripts/ifcfg-eth*; do sed -i /HWADDR/d $nic; done",
       "rm /etc/udev/rules.d/70-persistent-net.rules",
-      "yum clean all",
-      "rm -fr /etc/yum.repos.d/*",
-      "wget -O /etc/yum.repos.d/public-yum-ol6.repo http://ml330.home.kikitux.net/stage/ml330-yum-ol6.repo",
-      "yum install -y expect oracle-rdbms-server-12cR1-preinstall perl yum-plugin-fs-snapshot ocfs2-tools reflink btrfs-progs parted oracleasm-support unzip sudo",
-      "yum install -y wget tigervnc-server.x86_64 xclock man parted.x86_64 unzip.x86_64 xterm lsof bind  xorg-x11-twm glibc-devel.x86-64 glibc-devel.i686",
-      "yum install -y dhcp",
       "yum remove -y ntp",
-      "rm -fr /etc/yum.repos.d/*.repo",
-      "mv /etc/yum.repos.d/public-yum-ol6.repo{.ori,}",
-      "mkfs.btrfs /dev/sdb",
-      "blkid /dev/sdb 2>&1>/dev/null && echo $(blkid /dev/sdb -o export | head -n1) /u01 btrfs defaults 0 0 >> /etc/fstab",
+      "parted -s /dev/sdb mklabel msdos",
+      "parted -s /dev/sdb unit MB mkpart primary 0% 100%",
+      "mkfs.ext4 /dev/sdb1",
+      "blkid /dev/sdb1 2>&1>/dev/null && echo $(blkid /dev/sdb1 -o export | head -n1) /u01 ext4 defaults 0 0 >> /etc/fstab",
       "mkdir -p /u01",
       "mount /u01",
       "mkdir -p /u01/stage"
