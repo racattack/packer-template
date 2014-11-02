@@ -58,11 +58,16 @@
     }],
 
   "provisioners"             : [{
+    "type": "file",
+    "source": "oracleasmlib",
+    "destination": "/var/tmp"
+  },{
     "type": "shell",
     "execute_command": "sh '{{ .Path }}'",
     "inline": [
       "yum clean all",
       "yum update -y --security",
+      "yum localinstall -y /var/tmp/oracleasmlib/oracleasmlib-2.0.4-1.el6.x86_64.rpm",
       "yum update -y gmp",
       "yum -y install oracle*preinstall",
       "rpm -ivh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm",
@@ -109,4 +114,3 @@
     }
   ]
 }
-
